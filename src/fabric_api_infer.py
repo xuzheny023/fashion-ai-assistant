@@ -440,6 +440,17 @@ def cloud_infer(
         统一JSON Schema包含：
         - task, summary, details, recommendations, dfm_risks, next_actions
     """
+    # Do not silently route unsupported engines (e.g. OpenAI/Gemini) to Qwen.
+    if engine not in MODEL_MAP:
+        return {
+            "labels": [],
+            "confidences": [],
+            "reasoning": f"Unsupported model engine: {engine}. Supported: {', '.join(MODEL_MAP)}",
+            "raw": "",
+            "model": engine,
+            "engine": "error",
+        }
+
     # 检查依赖
     if dashscope is None or MultiModalConversation is None:
         return {
