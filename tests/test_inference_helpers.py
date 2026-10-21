@@ -47,6 +47,17 @@ class InferenceHelpersTest(unittest.TestCase):
         resized = infer.ensure_min_size(image, 640)
         self.assertEqual(resized.size, (640, 960))
 
+    def test_unsupported_provider_is_not_routed_to_qwen(self):
+        with patch.object(infer, "MultiModalConversation") as model_call:
+            result = infer.cloud_infer(
+                pil_image=Image.new("RGB", (16, 16)),
+                engine="google-gemini",
+                api_key="a-test-key",
+            )
+        self.assertEqual(result["engine"], "error")
+        self.assertIn("Unsupported model engine", result["reasoning"])
+        model_call.call.assert_not_called()
+
     def test_explicit_key_and_structured_response_without_network(self):
         received = {}
         sdk = SimpleNamespace(api_key=None)
