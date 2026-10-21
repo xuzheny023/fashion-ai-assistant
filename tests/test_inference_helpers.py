@@ -78,7 +78,8 @@ class InferenceHelpersTest(unittest.TestCase):
                 api_key="test-key-not-a-real-credential",
             )
 
-        self.assertEqual(sdk.api_key, "test-key-not-a-real-credential")
+        self.assertIsNone(sdk.api_key)
+        self.assertEqual(received["api_key"], "test-key-not-a-real-credential")
         self.assertEqual(received["model"], "qwen-vl-max")
         self.assertEqual(result["task"], "fabric")
         self.assertEqual(result["details"]["fabric"]["material"], "cotton")
