@@ -62,9 +62,7 @@ def get_api_key(engine: str = "qwen-vl") -> Optional[str]:
     
     Args:
         engine: 模型引擎名称 | Model engine name
-            - "qwen-vl": Alibaba DashScope
-            - "openai-gpt4v": OpenAI GPT-4 Vision
-            - "google-gemini": Google Gemini Vision
+            - "qwen-vl": Alibaba DashScope (the only supported backend)
     
     优先级 | Priority:
     1. 用户在侧边栏输入的密钥 | User input from sidebar
@@ -75,12 +73,7 @@ def get_api_key(engine: str = "qwen-vl") -> Optional[str]:
         str | None: API密钥或None
     """
     # 根据引擎确定环境变量名
-    env_var_map = {
-        "qwen-vl": "DASHSCOPE_API_KEY",
-        "openai-gpt4v": "OPENAI_API_KEY",
-        "google-gemini": "GOOGLE_API_KEY"
-    }
-    env_var = env_var_map.get(engine, "DASHSCOPE_API_KEY")
+    env_var = "DASHSCOPE_API_KEY"
     
     # 优先使用用户输入的密钥（针对当前引擎）
     session_key = f"user_api_key_{engine}"
@@ -382,10 +375,9 @@ with st.sidebar:
     st.subheader(t("roi_type", lang))
     task_type = st.radio(
         "",
-        ["auto", "fabric", "print", "construction"],
+        ["fabric", "print", "construction"],
         index=0,
         format_func=lambda x: {
-            "auto": t("task_auto", lang),
             "fabric": t("task_fabric", lang),
             "print": t("task_print", lang),
             "construction": t("task_construction", lang)
@@ -452,58 +444,27 @@ with st.sidebar:
     st.subheader(t("basic_settings", lang))
     
     # 模型选择
-    model_options = {
-        "qwen-vl": t("model_qwen", lang),
-        "openai-gpt4v": t("model_openai", lang),
-        "google-gemini": t("model_google", lang)
-    }
-    engine = st.selectbox(
-        t("model", lang), 
-        options=list(model_options.keys()),
-        format_func=lambda x: model_options[x],
-        index=0
-    )
-    enable_web = st.checkbox(
-        t("enable_web", lang), 
-        value=False,
-        help=t("enable_web_help", lang)
-    )
-    if enable_web:
-        k_per_query = st.slider(t("web_results", lang), 1, 10, 4)
-    else:
-        k_per_query = 4
-    
+    # Only Qwen-VL is wired to cloud_infer; do not advertise unimplemented providers.
+    engine = "qwen-vl"
+    st.caption(t("model_qwen", lang))
+
+    # Web evidence utilities exist, but are not connected to cloud_infer.
+    enable_web = False
+    k_per_query = 4
+
     st.divider()
     
     # === API 密钥配置 ===
     st.subheader(t("api_key_input", lang))
     
     # 根据模型选择确定 API 密钥的环境变量名称和占位符
-    api_config = {
-        "qwen-vl": {
-            "env_var": "DASHSCOPE_API_KEY",
-            "placeholder_zh": "sk-xxxxxxxxxxxxxxxxxxxxxxxx",
-            "placeholder_en": "sk-xxxxxxxxxxxxxxxxxxxxxxxx",
-            "help_zh": "在此输入您的阿里云灵积 API 密钥，或在 .streamlit/secrets.toml 中配置",
-            "help_en": "Enter your Alibaba Cloud DashScope API key here, or configure in .streamlit/secrets.toml",
-        },
-        "openai-gpt4v": {
-            "env_var": "OPENAI_API_KEY",
-            "placeholder_zh": "sk-proj-xxxxxxxxxxxxxxxxxx",
-            "placeholder_en": "sk-proj-xxxxxxxxxxxxxxxxxx",
-            "help_zh": "在此输入您的 OpenAI API 密钥，或在 .streamlit/secrets.toml 中配置",
-            "help_en": "Enter your OpenAI API key here, or configure in .streamlit/secrets.toml",
-        },
-        "google-gemini": {
-            "env_var": "GOOGLE_API_KEY",
-            "placeholder_zh": "AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxx",
-            "placeholder_en": "AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxx",
-            "help_zh": "在此输入您的 Google AI Studio API 密钥，或在 .streamlit/secrets.toml 中配置",
-            "help_en": "Enter your Google AI Studio API key here, or configure in .streamlit/secrets.toml",
-        }
+    current_config = {
+        "env_var": "DASHSCOPE_API_KEY",
+        "placeholder_zh": "sk-xxxxxxxxxxxxxxxxxxxxxxxx",
+        "placeholder_en": "sk-xxxxxxxxxxxxxxxxxxxxxxxx",
+        "help_zh": "输入 DashScope API 密钥，或配置 .streamlit/secrets.toml",
+        "help_en": "Enter your DashScope API key or configure .streamlit/secrets.toml",
     }
-    
-    current_config = api_config.get(engine, api_config["qwen-vl"])
     placeholder = current_config["placeholder_zh"] if lang == "zh" else current_config["placeholder_en"]
     help_text = current_config["help_zh"] if lang == "zh" else current_config["help_en"]
     
@@ -565,73 +526,6 @@ with st.sidebar:
                 🔗 **Official Docs**: [How to Get API Key](https://help.aliyun.com/zh/dashscope/developer-reference/activate-dashscope-and-create-an-api-key)
                 """)
         
-        elif engine == "openai-gpt4v":
-            if lang == "zh":
-                st.markdown("""
-                **获取 OpenAI API 密钥**
-                
-                1. 访问 [OpenAI Platform](https://platform.openai.com/)
-                2. 注册/登录 OpenAI 账号
-                3. 进入 [API Keys 页面](https://platform.openai.com/api-keys)
-                4. 点击 "Create new secret key" 创建新密钥
-                5. 复制密钥并粘贴到上方输入框
-                
-                ⚠️ **注意**: 需要 GPT-4 Vision 权限
-                
-                🔗 **官方文档**: [OpenAI API Keys](https://platform.openai.com/docs/api-reference/authentication)
-                
-                💰 **定价**: [OpenAI Pricing](https://openai.com/api/pricing/)
-                """)
-            else:
-                st.markdown("""
-                **Get OpenAI API Key**
-                
-                1. Visit [OpenAI Platform](https://platform.openai.com/)
-                2. Register/Login to your OpenAI account
-                3. Go to [API Keys page](https://platform.openai.com/api-keys)
-                4. Click "Create new secret key" to create a new key
-                5. Copy and paste the key above
-                
-                ⚠️ **Note**: GPT-4 Vision access required
-                
-                🔗 **Official Docs**: [OpenAI API Keys](https://platform.openai.com/docs/api-reference/authentication)
-                
-                💰 **Pricing**: [OpenAI Pricing](https://openai.com/api/pricing/)
-                """)
-        
-        elif engine == "google-gemini":
-            if lang == "zh":
-                st.markdown("""
-                **获取 Google AI Studio API 密钥**
-                
-                1. 访问 [Google AI Studio](https://aistudio.google.com/)
-                2. 使用 Google 账号登录
-                3. 点击 "Get API Key" 获取密钥
-                4. 复制密钥并粘贴到上方输入框
-                
-                ⚠️ **注意**: 需要 Gemini Pro Vision 权限
-                
-                🔗 **官方文档**: [Google AI Studio](https://ai.google.dev/tutorials/setup)
-                
-                💰 **定价**: [Gemini Pricing](https://ai.google.dev/pricing)
-                """)
-            else:
-                st.markdown("""
-                **Get Google AI Studio API Key**
-                
-                1. Visit [Google AI Studio](https://aistudio.google.com/)
-                2. Login with your Google account
-                3. Click "Get API Key" to obtain your key
-                4. Copy and paste the key above
-                
-                ⚠️ **Note**: Gemini Pro Vision access required
-                
-                🔗 **Official Docs**: [Google AI Studio](https://ai.google.dev/tutorials/setup)
-                
-                💰 **Pricing**: [Gemini Pricing](https://ai.google.dev/pricing)
-                """)
-    
-    
     st.divider()
     with st.expander(t("about", lang), expanded=False):
         st.markdown(t("about_content", lang))
@@ -975,6 +869,7 @@ with colR:
                     result = cloud_infer(
                         patch, 
                         engine=engine, 
+                        api_key=api_key_now,
                         lang=lang, 
                         enable_web=enable_web, 
                         k_per_query=k_per_query,
@@ -999,6 +894,7 @@ with colR:
                         result = cloud_infer(
                             img, 
                             engine=engine, 
+                        api_key=api_key_now,
                             lang=lang, 
                             enable_web=enable_web, 
                             k_per_query=k_per_query,
