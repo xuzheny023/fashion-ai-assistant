@@ -471,9 +471,7 @@ def cloud_infer(
             "engine": "error"
         }
     
-    # 设置 API Key
-    dashscope.api_key = api_key
-    
+    # Pass credentials per request; do not mutate process-global SDK state.
     # 选择模型
     model = MODEL_MAP.get(engine, "qwen-vl-plus")
     
@@ -524,6 +522,7 @@ def cloud_infer(
     # 调用 API
     try:
         response = MultiModalConversation.call(
+            api_key=api_key,
             model=model,
             messages=messages,
             top_p=0.7,
