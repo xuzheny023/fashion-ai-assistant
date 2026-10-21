@@ -59,7 +59,7 @@ Version: 2.0
 Last Updated: 2025-10
 """
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 from PIL import Image
 import io
 import base64
@@ -418,7 +418,8 @@ def cloud_infer(
     task_type: str = "auto",
     budget: str = "mid",
     scene: str = "casual",
-    constraints: str = "无特殊约束"
+    constraints: str = "无特殊约束",
+    api_key: Optional[str] = None
 ) -> Dict:
     """
     云端生产分析 - 专业版
@@ -433,11 +434,23 @@ def cloud_infer(
         budget: 预算档位 ("low"|"mid"|"high")
         scene: 使用场景 (如"casual"|"evening"|"activewear"|"home")
         constraints: 约束条件 (如"环保,可水洗,四向弹")
+        api_key: Optional explicit DashScope API key (e.g. entered in the UI)
     
     Returns:
         统一JSON Schema包含：
         - task, summary, details, recommendations, dfm_risks, next_actions
     """
+    # Do not silently route unsupported engines (e.g. OpenAI/Gemini) to Qwen.
+    if engine not in MODEL_MAP:
+        return {
+            "labels": [],
+            "confidences": [],
+            "reasoning": f"Unsupported model engine: {engine}. Supported: {', '.join(MODEL_MAP)}",
+            "raw": "",
+            "model": engine,
+            "engine": "error",
+        }
+
     # 检查依赖
     if dashscope is None or MultiModalConversation is None:
         return {
@@ -450,7 +463,7 @@ def cloud_infer(
         }
     
     # 获取 API Key
-    api_key = os.getenv("DASHSCOPE_API_KEY")
+    api_key = api_key or os.getenv("DASHSCOPE_API_KEY")
     if not api_key:
         # 尝试从 streamlit secrets 读取
         try:
@@ -469,9 +482,7 @@ def cloud_infer(
             "engine": "error"
         }
     
-    # 设置 API Key
-    dashscope.api_key = api_key
-    
+    # Pass credentials per request; do not mutate process-global SDK state.
     # 选择模型
     model = MODEL_MAP.get(engine, "qwen-vl-plus")
     
@@ -522,6 +533,7 @@ def cloud_infer(
     # 调用 API
     try:
         response = MultiModalConversation.call(
+            api_key=api_key,
             model=model,
             messages=messages,
             top_p=0.7,

@@ -1,0 +1,23 @@
+name: Python checks
+
+on:
+  push:
+    branches:
+      - main
+      - feat/cleanup-cloud-only
+  pull_request:
+
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependencies
+        run: python -m pip install pillow dashscope
+      - name: Compile project
+        run: python -m compileall -q app_new.py src tests
+      - name: Run offline unit tests
+        run: python -m unittest discover -s tests -v
